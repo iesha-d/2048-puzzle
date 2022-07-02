@@ -76,6 +76,12 @@ class Tile {
         
         this.val = val;
         this.t = 1;  // ranges 0-1
+
+        // if non-zero, when this tile reaches t = 1, set val = triggerNewVal
+        this.triggerNewVal = 0; 
+
+        // if true, when this tile reaches t = 1, remove it from tile list
+        this.triggerDestroy = false;  
     }
 
     // Returns the current row, col position as a two-element array [r, c]
@@ -100,21 +106,19 @@ class Model {
     initializeState() {
         this.counter = 0;
         this.board = [
-            ".#....",
-            "...##.",
-            "......",
-            "#.....",
-            "......",
-            "...##.",
-            "......",
-            "#.....",
-            "......"
-        ];
+            "....",
+            "..#.",
+            "#...",
+            "...."
+        ]
 
         this.score = 0;
         this.tiles = [
-            new Tile(2, 3, 4),
-            new Tile(3, 4, 64)
+            new Tile(0, 0, 4),
+            new Tile(0, 2, 8),
+            new Tile(1, 0, 4),
+            new Tile(3, 0, 32),
+            new Tile(3, 1, 16)
         ];
     }
 
@@ -127,7 +131,284 @@ class Model {
     // 1 for wall
     // 2, 4, 8, ... for tiles
     generateBoardMatrix() {
+        let result = [];
+        for (let i = 0; i < this.board.length; i++) {
+            let newRow = [];
+            for (let n = 0; n < this.board[i].length; n++) {
+                if (this.board[i][n] == ".") {
+                    newRow.push(0);
+                } else if (this.board[i][n] == "#") {
+                    newRow.push(1);
+                } else {
+                    throw new Error(`unknown character ${this.board[i][n]}`);
+                }
+            }
+            result.push(newRow);
+        }
 
+        // go through the list of tiles and replace existing 0's and 1's in result
+        // with the values of the tiles at the correct positions
+        for (let i = 0; i < this.tiles.length; i++) {
+            const tile = this.tiles[i];
+            const row = tile.r1;
+            const val = tile.val;
+            const col = tile.c1;
+            result[row][col] = val;
+        }
+
+        return result;
+    }
+
+    generateTileReferenceMatrix() {
+        let result = [];
+
+        // fill result with nulls just as in generateBoardMatrix
+        for (let i = 0; i < this.board.length; i++) {
+            let newRow = [];
+            for (let n = 0; n < this.board[i].length; n++) {
+                newRow.push(null);
+            }
+            result.push(newRow);
+        }
+        // for every tile, change the (r1, c1) cell of result to point at that tile
+        for (let i = 0; i < this.tiles.length; i++) {
+            const tile = this.tiles[i];
+            const row = tile.r1;
+            const col = tile.c1;
+            result[row][col] = tile;
+        }
+        return result
+    }
+
+
+    // Adds delta to the .t of every tile on the board,
+    // but makes sure that no tile's .t exceeds 1
+    addTime(delta) {
+        for (let i = 0; i < this.tiles.length; ) {
+            const tile = this.tiles[i];
+            tile.t = Math.min(1, tile.t + delta);
+
+            if (tile.t >= 1 && tile.triggerDestroy) {
+                this.tiles.splice(i, 1); // deletes tiles[i]
+            }
+            else if (tile.t >= 1 && tile.triggerNewVal > 0) {
+                tile.val = tile.triggerNewVal;
+                this.triggerNewVal = 0;
+                i++;
+            }
+            else {
+                i++;
+            }
+        }
+    }
+
+    moveLeft() {
+        let board = this.generateBoardMatrix();
+        let tiles = this.generateTileReferenceMatrix();
+        
+        for (let r = 0; r < board.length; r++) {
+            //     M = list of L.length 0's
+            //     copy all 1's from L to M
+            let M = [];
+            for (let c = 0; c < board[r].length; c++) {
+                M.push(board[r][c] === 1 ? 1 : 0);
+            }
+
+            let j = 0;
+            let last_added = 0;
+            let last_tile = null;
+    
+            for (let c = 0; c < board[r].length; c++) {
+                if (board[r][c] == 1) {
+                    j = c + 1;
+                    last_added = 0;
+                } else if (board[r][c] != 0) {
+                    if (board[r][c] == last_added) {
+                        M[j - 1] = board[r][c] * 2;
+                        
+                        tiles[r][c].r0 = tiles[r][c].r1;
+                        tiles[r][c].c0 = tiles[r][c].c1;
+                        tiles[r][c].c1 = j - 1;
+                        tiles[r][c].triggerDestroy = true;
+                        last_tile.triggerNewVal = last_tile.val * 2;
+
+                        last_added = 0;
+                        last_tile = null;
+                        tiles[r][c].t = 0;
+                    } else {
+                        M[j] = board[r][c];
+                        last_added = board[r][c];
+                        last_tile = tiles[r][c];
+
+                        tiles[r][c].r0 = tiles[r][c].r1;
+                        tiles[r][c].c0 = tiles[r][c].c1;
+                        tiles[r][c].c1 = j;
+                        tiles[r][c].t = 0;
+                        j++;
+                    }
+                }
+            }
+               
+            console.log(M);
+            // update actual tiles to match M
+        }
+        
+    }
+
+    moveRight() {
+        let board = this.generateBoardMatrix();
+        let tiles = this.generateTileReferenceMatrix();
+        
+        for (let r = 0; r < board.length; r++) {
+            //     M = list of L.length 0's
+            //     copy all 1's from L to M
+            let M = [];
+            for (let c = 0; c < board[r].length; c++) {
+                M.push(board[r][c] === 1 ? 1 : 0);
+            }
+
+            let j = board[r].length - 1;
+            let last_added = 0;
+            let last_tile = null;
+    
+            for (let c = board[r].length - 1; c >= 0; c--) {
+                if (board[r][c] == 1) {
+                    j = c - 1;
+                    last_added = 0;
+                } else if (board[r][c] != 0) {
+                    if (board[r][c] == last_added) {
+                        M[j + 1] = board[r][c] * 2;
+                        
+                        tiles[r][c].r0 = tiles[r][c].r1;
+                        tiles[r][c].c0 = tiles[r][c].c1;
+                        tiles[r][c].c1 = j + 1;
+                        tiles[r][c].triggerDestroy = true;
+                        last_tile.triggerNewVal = last_tile.val * 2;
+
+                        last_added = 0;
+                        last_tile = null;
+                        tiles[r][c].t = 0;
+                    } else {
+                        M[j] = board[r][c];
+                        last_added = board[r][c];
+                        last_tile = tiles[r][c];
+
+                        tiles[r][c].r0 = tiles[r][c].r1;
+                        tiles[r][c].c0 = tiles[r][c].c1;
+                        tiles[r][c].c1 = j;
+                        tiles[r][c].t = 0;
+                        j--;
+                    }
+                }
+            }
+               
+            console.log(M);
+            // update actual tiles to match M
+        }
+    }
+    
+    moveUp() {
+        let board = this.generateBoardMatrix();
+        let tiles = this.generateTileReferenceMatrix();
+        
+        for (let c = 0; c < board[0].length; c++) {
+            //     M = list of L.length 0's
+            //     copy all 1's from L to M
+            let M = [];
+            for (let r = 0; r < board.length; r++) {
+                M.push(board[r][c] === 1 ? 1 : 0);
+            }
+
+            let j = 0;
+            let last_added = 0;
+            let last_tile = null;
+    
+            for (let r = 0; r < board.length; r++) {
+                if (board[r][c] == 1) {
+                    j = r + 1;
+                    last_added = 0;
+                } else if (board[r][c] != 0) {
+                    if (board[r][c] == last_added) {
+                        M[j - 1] = board[r][c] * 2;
+                        
+                        tiles[r][c].r0 = tiles[r][c].r1;
+                        tiles[r][c].c0 = tiles[r][c].c1;
+                        tiles[r][c].r1 = j - 1;
+                        tiles[r][c].triggerDestroy = true;
+                        last_tile.triggerNewVal = last_tile.val * 2;
+
+                        last_added = 0;
+                        last_tile = null;
+                        tiles[r][c].t = 0;
+                    } else {
+                        M[j] = board[r][c];
+                        last_added = board[r][c];
+                        last_tile = tiles[r][c];
+
+                        tiles[r][c].r0 = tiles[r][c].r1;
+                        tiles[r][c].c0 = tiles[r][c].c1;
+                        tiles[r][c].r1 = j;
+                        tiles[r][c].t = 0;
+                        j++;
+                    }
+                }
+            }
+               
+            console.log(M);
+            // update actual tiles to match M
+        }
+    }
+
+    moveDown() {
+        let board = this.generateBoardMatrix();
+        let tiles = this.generateTileReferenceMatrix();
+        
+        for (let c = 0; c < board[0].length; c++) {
+            //     M = list of L.length 0's
+            //     copy all 1's from L to M
+            let M = [];
+            for (let r = 0; r < board.length; r++) {
+                M.push(board[r][c] === 1 ? 1 : 0);
+            }
+
+            let j = board.length - 1;
+            let last_added = 0;
+            let last_tile = null;
+    
+            for (let r = board.length - 1; r >= 0; r--) {
+                if (board[r][c] == 1) {
+                    j = r - 1;
+                    last_added = 0;
+                } else if (board[r][c] != 0) {
+                    if (board[r][c] == last_added) {
+                        M[j + 1] = board[r][c] * 2;
+                        
+                        tiles[r][c].r0 = tiles[r][c].r1;
+                        tiles[r][c].c0 = tiles[r][c].c1;
+                        tiles[r][c].r1 = j + 1;
+                        tiles[r][c].triggerDestroy = true;
+                        last_tile.triggerNewVal = last_tile.val * 2;
+
+                        last_added = 0;
+                        last_tile = null;
+                        tiles[r][c].t = 0;
+                    } else {
+                        M[j] = board[r][c];
+                        last_added = board[r][c];
+                        last_tile = tiles[r][c];
+
+                        tiles[r][c].r0 = tiles[r][c].r1;
+                        tiles[r][c].c0 = tiles[r][c].c1;
+                        tiles[r][c].r1 = j;
+                        tiles[r][c].t = 0;
+                        j--;
+                    }
+                }
+            }
+               
+            console.log(M);
+            // update actual tiles to match M
+        }
     }
 }
 
@@ -262,9 +543,16 @@ class Controller {
 
     onKey(key) {
         if (key == 'ArrowDown') {
-            this.model.addToCounter(-100);
+            //this.model.addToCounter(-100);
+            this.model.moveDown();
         } else if (key == 'ArrowUp') {
-            this.model.addToCounter(100);
+            //this.model.addToCounter(100);
+            this.model.moveUp();
+            console.log(this.model.tiles);
+        } else if (key == 'ArrowLeft') {
+            this.model.moveLeft();
+        } else if (key == 'ArrowRight') {
+            this.model.moveRight();
         }
     }
 
@@ -275,9 +563,27 @@ class Controller {
         this.previousTick = msElapsed;
 
         this.model.addToCounter(1);
+        this.model.addTime(msDelta / 1000 * 4.5);
 
         this.view.render(this.model);
     }
 }
+
+/* reality:
+        t1 = a slip of paper, "addr 1000"
+    t2 = a slip of paper, "addr 1001"
+        ta = [1000, 0, 0, 1001, 0, 1000]
+
+        1000: Tile(1, 2, 2048)
+        1001: Tile(2, 3, 64)
+
+        let t1 = new Tile(1, 2, 2048);
+        let t2 = new Tile(2, 3, 64);
+        let ta = [t1, null, null, t2, null, t1];
+        console.log(ta);
+
+        t1.val = 4096;
+        console.log(ta);
+*/
 
 const CONTROLLER = new Controller();
