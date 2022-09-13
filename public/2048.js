@@ -20,6 +20,358 @@ class Point {
     // and we want to step toward that point every frame. 
 }
 
+//////////////////////////////////////////////////////////////////////////////////////
+// Puzzle Generation
+
+// A *board matrix*, or board, consists of a 2D array of numbers
+// 0 means "empty", 1 means "wall", 2+ means "tile with that value"
+// The goal of this code is to generate interesting board matrices to solve
+
+// This function generates a fresh "final" board state (solution state)
+// with maybe some walls (maybe not) and a single tile with a larger
+// value on it. This is the state that we want the user to get
+// the board into in order to "win"
+function newFinalState(rows, cols, lastTile) {
+    let finalState = [];
+    let numWalls = Math.floor(Math.random() * (5));
+    let wallRows = [];
+    let wallCols = [];
+
+    let choice = Math.floor(Math.random() * (5 - 1) + 1);
+    let lastTileRow = 0;
+    let lastTileCol = 0;
+    if (choice == 1) {
+        lastTileRow = Math.floor(Math.random() * (rows));
+        lastTileCol = 0;
+    } else if (choice == 2) {
+        lastTileRow = Math.floor(Math.random() * (rows));
+        lastTileCol = cols - 1;
+    } else if (choice == 3) {
+        lastTileRow = 0;
+        lastTileCol = Math.floor(Math.random() * (cols));
+    } else {
+        lastTileRow = rows - 1;
+        lastTileCol = Math.floor(Math.random() * (cols));
+    }
+
+    for (let i = 0; i < numWalls; i++) {
+        wallRows.push(Math.floor(Math.random() * (rows - 2) + 1));
+        wallCols.push(Math.floor(Math.random() * (cols - 2) + 1));
+    }
+    for (let r = 0; r < rows; r++) {
+        let row = [];
+        for (let c = 0; c < cols; c++) {
+            row.push(0);
+        }
+        finalState.push(row);
+    }
+    for (let i = 0; i < numWalls; i++) {
+        finalState[wallRows[i]][wallCols[i]] = 1;
+    }
+    finalState[lastTileRow][lastTileCol] = lastTile;
+    return finalState;
+}
+
+// Return true if m1 and m2 have the same size and contain all the same numbers
+function matricesEqual(m1, m2) {
+    if (m1.length == m2.length && m1[0].length == m2[0].length) {
+        for (let r = 0; r < m1.length; r++) {
+            for (let c = 0; c < m1[r].length; c++) {
+                if (m1[r][c] != m2[r][c]) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    } else {
+        return false;
+    }
+}
+
+// Make a totally new matrix with the same row, col dimensions as m,
+// and fill it with all the values from m.
+function copyMatrix(m) {
+    let copy = [];
+    for (let r = 0; r < m.length; r++) {
+        let row = [];
+        for (let c = 0; c < m[r].length; c++) {
+            row.push(m[r][c]);
+        }
+        copy.push(row);
+    }
+    return copy;
+}
+
+// Directions specified as [row, col] changes
+const DIRECTIONS = [
+    [-1, 0],   // To go "forward", subtract 1 from row and do nothing to column
+    [1, 0],
+    [0, -1],
+    [0, 1]
+];
+
+// If given a direction that is up/down, return a direction to the right.
+// If given a direction that is left/right, return a directon toward the bottom (down).
+function getPerpendicularDirection(direction) {
+    if (direction[1] == 0) {
+        return [0, 1];
+    } else {
+        return [-1, 0];
+    }
+}
+
+// Given that start is [r, c] and direction is [dr, dc], return the array
+// consisting of every entry in matrix starting at [r, c] and stepping in the [dr, dc]
+// direction until you reach the end. For instance, if matrix has 4 rows and 3 cols,
+// and start = [1, 0] and direction is [0, 1], this returns positions
+// [1,0], [1,1], [1, 2], and [1,3] in a 4-element list.
+function collectAxis(matrix, start, direction) {
+    let positions = [];
+    let sr = start[0], sc = start[1];
+    while (sr < matrix.length && sc < matrix[0].length) {
+        positions.push(start);
+        sr += direction[0];
+        sc += direction[1];
+    }
+    return positions;
+}
+
+// get list of horizontal segments
+// what if the wall is on the far left or far right of the row?
+
+/*
+    to get segments for one row:
+
+        c = 0
+        while (c < total number of cols) {
+            if (mat[r,c] is wall) {
+                c++;
+            } else {
+                c2 = c;
+                step c2 to the right until it's adjacent to either a wall
+                    or the end of the board (so push c2 to the last empty
+                    board position you can)
+                append [[r, c], [r, c2]] to the list
+                c = c2 + 1;
+            }
+        }
+*/
+
+// page = header
+// for each item:
+//     page += item
+//     if we should page break:
+//         page ++ footer
+//         output page
+//         page = header
+// page += footer
+// output page
+function getHorizontalSegments(matrix) {
+    // let allSegments = [];
+    // for (let r = 0; r < matrix.length; r++) {
+    //     let segment = [];
+    //     let start = [r, 0];
+    //     let end = [];
+    //     segment.push(start);
+    //     for (let c = 0; c < matrix[r].length; c++) {
+    //         if (matrix[r][c] == 1) {
+    //             end = [r, c - 1];
+    //             segment.push(end);
+    //             allSegments.push(segment);
+    //             // start = [r, c + 1];
+    //             // segment = [];
+    //             // segment.push(start);
+    //         } else {
+    //             end = [r, c];
+    //         }
+    //     }
+    //     segment.push(end);
+    //     allSegments.push(segment);
+    // }
+    // return allSegments;
+
+    let allSegments = []
+    for (let r = 0; r < matrix.length; r++) {
+        let c = 0;
+        while (c < matrix[r].length) {
+            if (matrix[r][c] == 1) {
+                c++;
+            } else {
+                let c2 = c;
+                while (c2 < matrix[r].length) {
+                    if (matrix[r][c2] == 1) {
+                        break;
+                    }
+                    c2++;
+                }
+                allSegments.push([[r, c], [r, c2 - 1]]);
+                c = c2 + 1;
+            }
+        }
+    }
+    return allSegments;
+}
+
+// get list of vertical segments
+function getVerticalSegments() {
+    let allSegments = [];
+    for (let c = 0; c < matrix[0].length; c++) {
+        let r = 0;
+        while (r < matrix.length) {
+            if (matrix[r][c] == 1) {
+                r++;
+            } else {
+                let r2 = r;
+                while (r2 < matrix.length) {
+                    if (matrix[r2][c] == 1) {
+                        break;
+                    }
+                    r2++;
+                }
+                allSegments.push([[r, c], [r2 - 1, c]]);
+                r = r2 + 1;
+            }
+        }
+    }
+    return allSegments;
+}
+
+
+// Given a list of lists [l1, l2, l3, ...], 
+// return a new list consisting of every possible list where
+// the first element is taken from l1, the second from l2, and so on.
+// For instance, if we pass in [[1, 2, 3], [a, b], [7, 6]],
+// we get [[1, a, 7], [1, a, 6], [1, b, 7], [1, b, 6], [2, a, 7], ..., [3, b, 6]].
+//          0   0   0   0 0 1      0 1 0     0 1 1       1 0 0
+// 000, 001, 010, 011, 100, 101, 110, 111, 200, 201, 210, 211
+function possibleNewLists(l) {
+    let lists = [];
+    let num = [];
+    let zeroes = [];
+    for (let i = 0; i < l.length; i++) {
+        num.push(l[i].length - 1);
+    }
+    for (let i = 0; i < num.length; i++) {
+        zeroes.push(0);
+    }
+    let total = 1;
+    for (let i = 0; i < l.length; i++) {
+        total *= l[i].length;
+    }
+
+    while (lists.length < total) {
+        console.log(zeroes);
+        
+        // push the current position onto the results list
+        let newList = [];
+        for (let i = 0; i < l.length; i++) {
+            newList.push(l[i][zeroes[i]]);
+        }
+        lists.push(newList);
+
+        // step the position forward
+        let n = zeroes.length - 1;
+        while (n >= 0) {
+            if (zeroes[n] < l[n].length - 1) {
+                zeroes[n]++;
+                for (let n2 = n + 1; n2 < zeroes.length; n2++) {
+                    zeroes[n2] = 0;
+                }
+                break;
+            } else {
+                n--;
+            }
+        }
+        
+    }
+
+    return lists; 
+}
+
+// Returns true if the segment (a contiguous region of 0's and 2-4-8-16
+// tiles) could have arisen as the result of the player shifting all the tiles
+// to the left/top (the low indices).
+//
+// Don't worry (yet) about situations like [4, 4, 4] where technically the
+// user couldn't have pressed left to get this because the 4's would have combined
+// Just call this a "yes" and move on
+function noTiles(segment) {
+    for (let i = 0; i < segment.length; i++) {
+        if (segment[i] != 0 && segment[i] != 1) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function allTiles(segment) {
+    for (let i = 0; i < segment.length; i++) {
+        if (segment[i] == 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function couldHaveBeenShiftLow(segment) {
+    if (noTiles(segment)) {
+        return true;
+    } else if (allTiles(segment)) {
+        return true;
+    } else if (segment[0] == 0) {
+        return false;
+    }
+    
+    // We know the seg[0] position is NOT 0
+    // Step to the right until you encounter a 0
+    // Remember that index. Every index AFTER that should be 0
+    let result = true;
+    let n = 0;
+    //while (n < segment.length && segment[i] != 0)
+    //    n++;
+    for (let i = 0; i < segment.length; i++) {
+        if (segment[i] == 0) {
+            n = i;
+            break;
+        }
+    }
+    for (let i = n + 1; i < segment.length; i++) {
+        if (segment[i] != 0 && segment[i] != 1) {
+            result = false;
+            break;
+        }
+    }
+    
+    return result;
+}
+
+// 1. For the horizontal and vertical directions, repeat all of the following.
+// 2. Decompose the board into segments. Call this list S.
+// 3. For each segment s in S, determine whether the situation could have
+//    arisen as the result of a left, right, up, or down action.
+// 4. If *all* of the segments in S could have arisen as the result of a
+//    action of type a (say a is left, right, up, or down), then:
+// 5. Compute the past states for each segment s in S which could have led 
+//    to the current condition via action a. Call these p(s), and the set of all
+//    p(s) is P.
+// 6. Use possibleNewLists to select every possible combination of
+//    items from P. Every one of these is a new board we could explore
+//    backwards into.
+
+// Push all the tiles as far as possible to the `direction` direction,
+// where direction is a [dr, dc] pair in {[-1, 0], [1, 0], [0, -1], [0, 1]}
+function pushTiles(matrix, direction) {
+    // adapt the moveLeft, etc. code to take in a direction which has
+    // a dr and dc pair.
+    const [dr, dc] = direction;
+
+    // if dr == 0, we're moving left and right (the column is changing)
+    // if dc == 0, we're moving up and down (the row is changing)
+    const perp_dr = (dr == 0 ? 1 : 0);
+    const perp_dc = (dc == 0 ? 1 : 0);
+    
+}
+
 
 
 
@@ -410,6 +762,7 @@ class Model {
             // update actual tiles to match M
         }
     }
+
 }
 
 class View {
