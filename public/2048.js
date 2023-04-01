@@ -16,21 +16,9 @@ class Point {
         return new Point(this.x * factor, this.y * factor);
     }
 
-    // In animation, we typically have a target Point that you are approaching
-    // and we want to step toward that point every frame. 
 }
 
-//////////////////////////////////////////////////////////////////////////////////////
-// Puzzle Generation
 
-// A *board matrix*, or board, consists of a 2D array of numbers
-// 0 means "empty", 1 means "wall", 2+ means "tile with that value"
-// The goal of this code is to generate interesting board matrices to solve
-
-// This function generates a fresh "final" board state (solution state)
-// with maybe some walls (maybe not) and a single tile with a larger
-// value on it. This is the state that we want the user to get
-// the board into in order to "win"
 function newFinalState(rows, cols, lastTile) {
     let finalState = [];
     let numWalls = Math.floor(Math.random() * (5));
@@ -72,7 +60,7 @@ function newFinalState(rows, cols, lastTile) {
     return finalState;
 }
 
-// Return true if m1 and m2 have the same size and contain all the same numbers
+// Returns true if m1 and m2 have the same size and contain all the same numbers
 function matricesEqual(m1, m2) {
     if (m1.length == m2.length && m1[0].length == m2[0].length) {
         for (let r = 0; r < m1.length; r++) {
@@ -88,7 +76,7 @@ function matricesEqual(m1, m2) {
     }
 }
 
-// Make a totally new matrix with the same row, col dimensions as m,
+// Makes a totally new matrix with the same row, col dimensions as m,
 // and fill it with all the values from m.
 function copyMatrix(m) {
     let copy = [];
@@ -104,14 +92,14 @@ function copyMatrix(m) {
 
 // Directions specified as [row, col] changes
 const DIRECTIONS = [
-    [-1, 0],   // To go "forward", subtract 1 from row and do nothing to column
+    [-1, 0],  
     [1, 0],
     [0, -1],
     [0, 1]
 ];
 
-// If given a direction that is up/down, return a direction to the right.
-// If given a direction that is left/right, return a directon toward the bottom (down).
+// If given a direction that is up/down, returns a direction to the right.
+// If given a direction that is left/right, returns a directon toward the bottom (down).
 function getPerpendicularDirection(direction) {
     if (direction[1] == 0) {
         return [0, 1];
@@ -120,11 +108,6 @@ function getPerpendicularDirection(direction) {
     }
 }
 
-// Given that start is [r, c] and direction is [dr, dc], return the array
-// consisting of every entry in matrix starting at [r, c] and stepping in the [dr, dc]
-// direction until you reach the end. For instance, if matrix has 4 rows and 3 cols,
-// and start = [1, 0] and direction is [0, 1], this returns positions
-// [1,0], [1,1], [1, 2], and [1,3] in a 4-element list.
 function collectAxis(matrix, start, direction) {
     let positions = [];
     let sr = start[0], sc = start[1];
@@ -136,59 +119,9 @@ function collectAxis(matrix, start, direction) {
     return positions;
 }
 
-// get list of horizontal segments
-// what if the wall is on the far left or far right of the row?
+// gets list of horizontal segments
 
-/*
-    to get segments for one row:
-
-        c = 0
-        while (c < total number of cols) {
-            if (mat[r,c] is wall) {
-                c++;
-            } else {
-                c2 = c;
-                step c2 to the right until it's adjacent to either a wall
-                    or the end of the board (so push c2 to the last empty
-                    board position you can)
-                append [[r, c], [r, c2]] to the list
-                c = c2 + 1;
-            }
-        }
-*/
-
-// page = header
-// for each item:
-//     page += item
-//     if we should page break:
-//         page ++ footer
-//         output page
-//         page = header
-// page += footer
-// output page
 function getHorizontalSegments(matrix) {
-    // let allSegments = [];
-    // for (let r = 0; r < matrix.length; r++) {
-    //     let segment = [];
-    //     let start = [r, 0];
-    //     let end = [];
-    //     segment.push(start);
-    //     for (let c = 0; c < matrix[r].length; c++) {
-    //         if (matrix[r][c] == 1) {
-    //             end = [r, c - 1];
-    //             segment.push(end);
-    //             allSegments.push(segment);
-    //             // start = [r, c + 1];
-    //             // segment = [];
-    //             // segment.push(start);
-    //         } else {
-    //             end = [r, c];
-    //         }
-    //     }
-    //     segment.push(end);
-    //     allSegments.push(segment);
-    // }
-    // return allSegments;
 
     let allSegments = []
     for (let r = 0; r < matrix.length; r++) {
@@ -212,7 +145,7 @@ function getHorizontalSegments(matrix) {
     return allSegments;
 }
 
-// get list of vertical segments
+// gets list of vertical segments
 function getVerticalSegments() {
     let allSegments = [];
     for (let c = 0; c < matrix[0].length; c++) {
@@ -238,12 +171,9 @@ function getVerticalSegments() {
 
 
 // Given a list of lists [l1, l2, l3, ...], 
-// return a new list consisting of every possible list where
+// returns a new list consisting of every possible list where
 // the first element is taken from l1, the second from l2, and so on.
-// For instance, if we pass in [[1, 2, 3], [a, b], [7, 6]],
-// we get [[1, a, 7], [1, a, 6], [1, b, 7], [1, b, 6], [2, a, 7], ..., [3, b, 6]].
-//          0   0   0   0 0 1      0 1 0     0 1 1       1 0 0
-// 000, 001, 010, 011, 100, 101, 110, 111, 200, 201, 210, 211
+
 function possibleNewLists(l) {
     let lists = [];
     let num = [];
@@ -262,14 +192,14 @@ function possibleNewLists(l) {
     while (lists.length < total) {
         console.log(zeroes);
         
-        // push the current position onto the results list
+        // pushes the current position onto the results list
         let newList = [];
         for (let i = 0; i < l.length; i++) {
             newList.push(l[i][zeroes[i]]);
         }
         lists.push(newList);
 
-        // step the position forward
+        // steps the position forward
         let n = zeroes.length - 1;
         while (n >= 0) {
             if (zeroes[n] < l[n].length - 1) {
@@ -291,10 +221,7 @@ function possibleNewLists(l) {
 // Returns true if the segment (a contiguous region of 0's and 2-4-8-16
 // tiles) could have arisen as the result of the player shifting all the tiles
 // to the left/top (the low indices).
-//
-// Don't worry (yet) about situations like [4, 4, 4] where technically the
-// user couldn't have pressed left to get this because the 4's would have combined
-// Just call this a "yes" and move on
+
 function noTiles(segment) {
     for (let i = 0; i < segment.length; i++) {
         if (segment[i] != 0 && segment[i] != 1) {
@@ -322,13 +249,8 @@ function couldHaveBeenShiftLow(segment) {
         return false;
     }
     
-    // We know the seg[0] position is NOT 0
-    // Step to the right until you encounter a 0
-    // Remember that index. Every index AFTER that should be 0
     let result = true;
     let n = 0;
-    //while (n < segment.length && segment[i] != 0)
-    //    n++;
     for (let i = 0; i < segment.length; i++) {
         if (segment[i] == 0) {
             n = i;
@@ -345,28 +267,11 @@ function couldHaveBeenShiftLow(segment) {
     return result;
 }
 
-// 1. For the horizontal and vertical directions, repeat all of the following.
-// 2. Decompose the board into segments. Call this list S.
-// 3. For each segment s in S, determine whether the situation could have
-//    arisen as the result of a left, right, up, or down action.
-// 4. If *all* of the segments in S could have arisen as the result of a
-//    action of type a (say a is left, right, up, or down), then:
-// 5. Compute the past states for each segment s in S which could have led 
-//    to the current condition via action a. Call these p(s), and the set of all
-//    p(s) is P.
-// 6. Use possibleNewLists to select every possible combination of
-//    items from P. Every one of these is a new board we could explore
-//    backwards into.
-
-// Push all the tiles as far as possible to the `direction` direction,
-// where direction is a [dr, dc] pair in {[-1, 0], [1, 0], [0, -1], [0, 1]}
 function pushTiles(matrix, direction) {
-    // adapt the moveLeft, etc. code to take in a direction which has
-    // a dr and dc pair.
     const [dr, dc] = direction;
 
-    // if dr == 0, we're moving left and right (the column is changing)
-    // if dc == 0, we're moving up and down (the row is changing)
+    // if dr == 0, moves left and right (the column is changing)
+    // if dc == 0, moves up and down (the row is changing)
     const perp_dr = (dr == 0 ? 1 : 0);
     const perp_dc = (dc == 0 ? 1 : 0);
     
@@ -374,46 +279,15 @@ function pushTiles(matrix, direction) {
 
 
 
-
-
-
-// Model-view-controller (MVC) architecture
-//
-// GUIs are really common - and programmers have spent a lot of collective time
-// thinking about how to deal with writing GUI code.
-//
-// The MVC architecture is one of those overall approaches to creating a 
-// well-structured graphical project.
-//
-// Model: Stores a representation of "what the user sees", sort of like
-//   the state of the board, the list of objects, stuff like that.
-//   If we were playing chess, the Model would be a matrix of 64 tiles
-//   together with their contents, maybe the names of the players,
-//   the game state ("playing", "finished",  etc.), and so on.
-//   The Model has NO IDEA how to draw anything, receive user input,
-//   or whatever. All it does is store WHAT is the situation, not HOW to
-//   show it to the user.
-//
-//   For Pong: playing|finished, ball pos, paddle y-coords, player scores
-//
-// View: Draws Models on the screen, deals with issues of color, shape,
-//   requesting additional animation information from model.
-//
-// Controller:
-//   - Where the program starts. First builds Model, then View, then
-//     it sits on top of everything.
-//   - Events are handled here.
-//     - On events, ask model to change or ask view to update
-
 const ANIMATION_TIME = 0.5;
 
 class Tile {
     constructor(r, c, val) {
         // Center of top-left tile is (0, 0).
-        // We store tiles using (row, col) notation, so (2, 1) would be row 2 col 1
+        // Store tiles using (row, col) notation, so (2, 1) would be row 2 col 1
 
-        // We store two (r, c) positions - one for the start of anim, one for the end of anim.
-        // We store a t in range [0, 1]. If t = 0, we're at start. If t = 1, we're at end.
+        // Store two (r, c) positions - one for the start of anim, one for the end of anim.
+        // Store a t in range [0, 1]. If t = 0, we're at start. If t = 1, we're at end.
         // As far as the game is concerned, the tile is always "at the end".
 
         // (r0, c0) is where the tile was at t=0
@@ -429,10 +303,10 @@ class Tile {
         this.val = val;
         this.t = 1;  // ranges 0-1
 
-        // if non-zero, when this tile reaches t = 1, set val = triggerNewVal
+        // if non-zero, when this tile reaches t = 1, sets val = triggerNewVal
         this.triggerNewVal = 0; 
 
-        // if true, when this tile reaches t = 1, remove it from tile list
+        // if true, when this tile reaches t = 1, removes it from tile list
         this.triggerDestroy = false;  
     }
 
@@ -444,10 +318,91 @@ class Tile {
         let vr = this.r1 - this.r0;
         let vc = this.c1 - this.c0;
 
-        return [this.t * vr + this.r0, this.t * vc + this.c0]
+
+        return [
+            this.r0 + (-1 * vr) * ((Math.cos(Math.PI * this.t) - 1) / 2),
+            this.c0 + (-1 * vc) * ((Math.cos(Math.PI * this.t) - 1) / 2)
+        ]
     }
 
     
+}
+
+// n is a power of 2
+// decomposes n into a randomly selected set of other smaller powers of 2 that all add up to n
+function decomposeTotal(n, splitProb = 1.1) {
+    if (n > 2 & Math.random() < splitProb) {
+        let result = decomposeTotal(n / 2, splitProb - 0.15);
+        for (let item of decomposeTotal(n / 2, splitProb - 0.15)) {
+            result.push(item);
+        }
+        return result;
+    } else {
+        return [n];
+    }
+}
+
+function newRandomBoard() {
+    let tileNumbers = decomposeTotal(2 ** (Math.floor(Math.random() * (9 - 7) + 7)));
+
+    let tiles = [];
+    let board = [];
+    let numberOfWalls = 4;
+    let side = 4;
+    while (tileNumbers.length > 0.7 * side * side) {
+        side++;
+    }
+
+    for (let r = 0; r < side; r++) {
+        let row = "";
+        for (let c = 0; c < side; c++) {
+            let random = Math.floor(Math.random() * 5);
+            if (random == 1 && numberOfWalls > 0) {
+                row += '#';
+                numberOfWalls--;
+            } else { 
+                row += '.';
+            }
+        }
+        board.push(row);
+    }
+    console.log(board);
+    for (let i = 0; i < tileNumbers.length; i++) {
+        let cycles = 0;
+        while (cycles < 100000) {
+            // generates a random placement (r, c)
+            // if it's available, places the tile there and break
+            // if it's not, keeps looping
+            let r = (Math.floor(Math.random() * side));
+            let c = (Math.floor(Math.random() * side));
+            if (isEmpty(r, c, tiles, board)) {
+                tiles.push(new Tile(r, c, tileNumbers[i]));
+                break;
+            }
+            cycles++;
+        }
+
+        if (cycles >= 100000) {
+            console.log(`Infinite loop detected for i=${i} in newRandomBoard`);
+            console.log(board);
+            console.log(tiles);
+            break;
+        }
+    }
+
+    return {
+        tiles: tiles,
+        board: board
+    }
+}
+
+function isEmpty(r, c, tiles, board) {
+    for (let i = 0; i < tiles.length; i++) {
+        if ((tiles[i].r1 == r && tiles[i].c1 == c) || board[r][c] == '#') {
+            return false;
+        }
+    }
+    return true;
 }
 
 class Model {
@@ -457,21 +412,11 @@ class Model {
     
     initializeState() {
         this.counter = 0;
-        this.board = [
-            "....",
-            "..#.",
-            "#...",
-            "...."
-        ]
+        let createdBoard = newRandomBoard();
+        this.board = createdBoard.board;
 
         this.score = 0;
-        this.tiles = [
-            new Tile(0, 0, 4),
-            new Tile(0, 2, 8),
-            new Tile(1, 0, 4),
-            new Tile(3, 0, 32),
-            new Tile(3, 1, 16)
-        ];
+        this.tiles = createdBoard.tiles;
     }
 
     addToCounter(n) {
@@ -498,7 +443,7 @@ class Model {
             result.push(newRow);
         }
 
-        // go through the list of tiles and replace existing 0's and 1's in result
+        // goes through the list of tiles and replace existing 0's and 1's in result
         // with the values of the tiles at the correct positions
         for (let i = 0; i < this.tiles.length; i++) {
             const tile = this.tiles[i];
@@ -522,7 +467,7 @@ class Model {
             }
             result.push(newRow);
         }
-        // for every tile, change the (r1, c1) cell of result to point at that tile
+        // for every tile, changes the (r1, c1) cell of result to point at that tile
         for (let i = 0; i < this.tiles.length; i++) {
             const tile = this.tiles[i];
             const row = tile.r1;
@@ -559,8 +504,6 @@ class Model {
         let tiles = this.generateTileReferenceMatrix();
         
         for (let r = 0; r < board.length; r++) {
-            //     M = list of L.length 0's
-            //     copy all 1's from L to M
             let M = [];
             for (let c = 0; c < board[r].length; c++) {
                 M.push(board[r][c] === 1 ? 1 : 0);
@@ -602,7 +545,6 @@ class Model {
             }
                
             console.log(M);
-            // update actual tiles to match M
         }
         
     }
@@ -612,8 +554,6 @@ class Model {
         let tiles = this.generateTileReferenceMatrix();
         
         for (let r = 0; r < board.length; r++) {
-            //     M = list of L.length 0's
-            //     copy all 1's from L to M
             let M = [];
             for (let c = 0; c < board[r].length; c++) {
                 M.push(board[r][c] === 1 ? 1 : 0);
@@ -655,7 +595,6 @@ class Model {
             }
                
             console.log(M);
-            // update actual tiles to match M
         }
     }
     
@@ -664,8 +603,6 @@ class Model {
         let tiles = this.generateTileReferenceMatrix();
         
         for (let c = 0; c < board[0].length; c++) {
-            //     M = list of L.length 0's
-            //     copy all 1's from L to M
             let M = [];
             for (let r = 0; r < board.length; r++) {
                 M.push(board[r][c] === 1 ? 1 : 0);
@@ -707,7 +644,6 @@ class Model {
             }
                
             console.log(M);
-            // update actual tiles to match M
         }
     }
 
@@ -716,8 +652,6 @@ class Model {
         let tiles = this.generateTileReferenceMatrix();
         
         for (let c = 0; c < board[0].length; c++) {
-            //     M = list of L.length 0's
-            //     copy all 1's from L to M
             let M = [];
             for (let r = 0; r < board.length; r++) {
                 M.push(board[r][c] === 1 ? 1 : 0);
@@ -759,7 +693,6 @@ class Model {
             }
                
             console.log(M);
-            // update actual tiles to match M
         }
     }
 
@@ -797,7 +730,6 @@ class View {
         let rows = model.board.length;
         let cols = model.board[0].length;
 
-        // see miro whiteboard
         let h, k, s;
         if (rows > cols) {
             s = size / rows;
@@ -815,7 +747,7 @@ class View {
     }
 
     render(model) {
-        this.renderCounter(model.counter);
+        //this.renderCounter(model.counter);
         this.renderCanvas(model);
 
         for (let tiles = 0; tiles < model.tiles.length; tiles++) {
@@ -832,7 +764,6 @@ class View {
         ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(0, 0, 500, 500);
 
-        // Draw a small black rect at (counter % 500, 0)
         ctx.fillStyle = "#000000";
         ctx.fillRect(model.counter % 500, 0, 10, 20);
 
@@ -852,8 +783,8 @@ class View {
         }
     }
 
-    // Draw [tile] on the canvas at its current (r, c) position (use the tile's .t)
-    // and use the value of the tile to draw its number centered in the middle 
+    // Draws [tile] on the canvas at its current (r, c) position (use the tile's .t)
+    // and uses the value of the tile to draw its number centered in the middle 
     // of the tile
     renderTile(model, tile) {
         var ctx = this.canvas.getContext("2d");
@@ -870,11 +801,32 @@ class View {
         ctx.fillStyle = "#ffffff";
         let width = x2 - x;
         let height = y2 - y;
-        let fontsize = 16;
-        ctx.font = `${fontsize}px Arial`;
-        let size = ctx.measureText(tile.val);
+
+        /* if (tile.val >= 128 && model.board.length >= 6) {
+            fontsize = 38;
+        } else if (tile.val >= 128) {
+            fontsize = 50;
+        }*/ 
+        let tileWidth = 500 / model.board.length;
+        let fontsize = 0.7 * tileWidth;
+        let size;
+        while (true) {
+            ctx.font = `${fontsize}px Arial`;
+            size = ctx.measureText(tile.val);
+            //console.log("Font size for \"" + tile.val + "\" is " + size);
+            
+            if (size.width > 0.7 * tileWidth) {
+                fontsize *= 0.95;
+            } else {
+                break;
+            }
+        }
+        
         let x3 = ((width - size.width) / 2) + x;
-        let y3 = ((height + fontsize) / 2) + y;
+        let actualHeight = size.actualBoundingBoxAscent + size.actualBoundingBoxDescent;
+        let y3 = ((height + fontsize * 0.7) / 2) + y;
+        console.log(actualHeight);
+        //console.log(`(x3,y3)=(${x3},${y3}) for w,h ${width},${height} s.w,s.h ${size.width},${size.height} x,y ${x},${y} tileWidth ${tileWidth} font ${ctx.font}`)
         ctx.fillText(tile.val, x3, y3);
     }
 
@@ -921,22 +873,5 @@ class Controller {
         this.view.render(this.model);
     }
 }
-
-/* reality:
-        t1 = a slip of paper, "addr 1000"
-    t2 = a slip of paper, "addr 1001"
-        ta = [1000, 0, 0, 1001, 0, 1000]
-
-        1000: Tile(1, 2, 2048)
-        1001: Tile(2, 3, 64)
-
-        let t1 = new Tile(1, 2, 2048);
-        let t2 = new Tile(2, 3, 64);
-        let ta = [t1, null, null, t2, null, t1];
-        console.log(ta);
-
-        t1.val = 4096;
-        console.log(ta);
-*/
 
 const CONTROLLER = new Controller();
